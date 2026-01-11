@@ -3,80 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iNSPiCカバーメーカー</title>
-    <script src="https://unpkg.com/fabric@5.3.0/dist/fabric.min.js"></script>
+    <title>iNSPiC カバーメーカー</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; text-align: center; background: #eee; padding: 20px; }
-        .canvas-wrapper { display: inline-block; background: white; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        .controls { margin-top: 20px; background: white; padding: 15px; border-radius: 10px; display: inline-block; }
-        button { padding: 10px; margin: 5px; cursor: pointer; }
+        body { font-family: 'M PLUS Rounded 1c', sans-serif; text-align: center; background: #f0f2f5; padding: 20px; margin: 0; }
+        .disclaimer { font-size: 11px; color: #888; margin-bottom: 10px; }
+        
+        /* キャンバスの外枠 */
+        .canvas-wrapper { 
+            display: inline-block; 
+            padding: 10px; 
+            background: #fff; 
+            border-radius: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            margin-bottom: 15px;
+            line-height: 0;
+        }
+
+        /* 操作パネル */
+        .controls { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 15px; 
+            display: inline-block; 
+            max-width: 90%; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .control-group { 
+            margin-bottom: 15px; 
+            padding-bottom: 10px; 
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button { 
+            padding: 10px 18px; 
+            cursor: pointer; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+        }
+        input[type="color"] { width: 44px; height: 34px; border: none; cursor: pointer; background: none; }
+        input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 120px; }
+        #download { background: #28a745; width: 100%; margin-top: 10px; font-size: 16px; }
     </style>
 </head>
 <body>
 
-    <h1>iNSPiC Maker</h1>
+    <h1>iNSPiC カバーメーカー</h1>
+    <p class="disclaimer">※非公式：縦向き 84x120mm 目安</p>
     
     <div class="canvas-wrapper">
         <canvas id="c"></canvas>
     </div>
 
     <div class="controls">
-        背景色：<input type="color" id="colorPicker" value="#ffffff"><br>
-        文字：<input type="text" id="txt" placeholder="あいうえお">
-        <button id="addBtn">文字追加</button><br>
-        画像：<input type="file" id="file" accept="image/*"><br><br>
-        <button id="save" style="background: #28a745; color: white;">保存する</button>
+        <div class="control-group">
+            背景：<input type="color" id="bgColor" value="#ffffff">
+            画像：<input type="file" id="imageInput" accept="image/*">
+        </div>
+
+        <div class="control-group">
+            <input type="text" id="textInput" placeholder="文字を入力">
+            <button id="addText">文字追加</button>
+            <input type="color" id="textColor" value="#333333">
+        </div>
+
+        <button id="download">デザインを保存 (PNG)</button>
     </div>
 
     <script>
-        // 動作チェック用のログ
-        console.log("プログラム開始");
-
-        try {
-            // キャンバス設定 (317 x 453)
+        // ページ読み込み完了時に実行
+        window.onload = function() {
+            // キャンバス初期化 (縦向き 317x453)
             const canvas = new fabric.Canvas('c', {
                 width: 317,
                 height: 453,
                 backgroundColor: '#ffffff'
             });
 
+            // ガイド線（本体枠と裁断点線）
+            const shell = new fabric.Rect({
+                left: 0, top: 0, width: 317, height: 453, rx: 20, ry: 20,
+                fill: 'transparent', stroke: '#e0e0e0', strokeWidth: 2, selectable: false, evented: false
+            });
+            const guide = new fabric.Rect({
+                left: 5, top: 5, width: 307, height: 443, rx: 18, ry: 18,
+                fill: 'transparent', stroke: '#ff4757', strokeDashArray: [5, 5], selectable: false, evented: false
+            });
+            canvas.add(shell, guide);
+
             // 背景色変更
-            document.getElementById('colorPicker').oninput = function() {
+            document.getElementById('bgColor').oninput = function() {
                 canvas.setBackgroundColor(this.value, canvas.renderAll.bind(canvas));
             };
 
-            // 文字追加
-            document.getElementById('addBtn').onclick = function() {
-                const val = document.getElementById('txt').value || 'Hello';
-                const text = new fabric.IText(val, { left: 50, top: 50 });
-                canvas.add(text);
-            };
-
             // 画像追加
-            document.getElementById('file').onchange = function(e) {
+            document.getElementById('imageInput').onchange = function(e) {
                 const reader = new FileReader();
                 reader.onload = function(f) {
                     fabric.Image.fromURL(f.target.result, function(img) {
                         img.scaleToWidth(200);
                         canvas.add(img);
+                        img.moveTo(1); // ガイドの下に配置
+                        canvas.setActiveObject(img);
+                        canvas.renderAll();
                     });
                 };
                 reader.readAsDataURL(e.target.files[0]);
             };
 
-            // 保存
-            document.getElementById('save').onclick = function() {
-                const dataURL = canvas.toDataURL({ format: 'png' });
-                const link = document.createElement('a');
-                link.download = 'inspic.png';
-                link.href = dataURL;
-                link.click();
+            // 文字追加
+            document.getElementById('addText').onclick = function() {
+                const val = document.getElementById('textInput').value || 'My iNSPiC';
+                const col = document.getElementById('textColor').value;
+                const text = new fabric.IText(val, {
+                    left: 50, top: 50,
+                    fontFamily: 'M PLUS Rounded 1c',
+                    fontSize: 30,
+                    fill: col
+                });
+                canvas.add(text);
+                canvas.setActiveObject(text);
+                canvas.renderAll();
             };
 
-            console.log("設定完了！");
-        } catch (e) {
-            alert("エラーが発生しました: " + e.message);
-        }
+            // 保存
+            document.getElementById('download').onclick = function() {
+                // ガイドを一時非表示
+                shell.set('visible', false);
+                guide.set('visible', false);
+                canvas.renderAll();
+
+                const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
+                const link = document.createElement('a');
+                link.download = 'inspic-design.png';
+                link.href = dataURL;
+                link.click();
+
+                // ガイドを戻す
+                shell.set('visible', true);
+                guide.set('visible', true);
+                canvas.renderAll();
+            };
+        };
     </script>
 </body>
 </html>
