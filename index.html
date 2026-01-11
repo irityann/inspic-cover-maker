@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iNSPiC 着せ替えメーカー</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
+        #canvas-container { margin: 20px auto; width: 453px; height: 317px; background: white; border: 2px solid #ccc; position: relative; overflow: hidden; }
+        .guide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 2px dashed #ff4757; pointer-events: none; box-sizing: border-box; }
+        input { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>iNSPiC 着せ替えメーカー</h1>
+    <p>iNSPiC（120mm × 84mm）のサイズ目安です</p>
+    
+    <div id="canvas-container">
+        <div class="guide"></div>
+        <img id="preview" style="max-width: 100%; cursor: move;">
+    </div>
+
+    <input type="file" id="imageInput" accept="image/*"><br>
+    <p>画像をアップロードして位置を確認してみよう</p>
+
+    <script>
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = document.getElementById('preview');
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        });
+    </script>
+</body>
+</html>
