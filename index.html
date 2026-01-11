@@ -6,48 +6,78 @@
     <title>iNSPiC カバーメーカー(非公式)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f9f9f9; padding: 20px; }
-        .disclaimer { font-size: 11px; color: #888; }
-        canvas { border: 2px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .controls { margin-top: 20px; background: white; padding: 15px; border-radius: 10px; display: inline-block; }
-        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding: 20px; }
+        .disclaimer { font-size: 11px; color: #888; margin-bottom: 10px; }
+        /* キャンバスの外側に影をつけて「物」っぽく見せる */
+        .canvas-wrapper { 
+            display: inline-block; 
+            padding: 10px; 
+            background: #fff; 
+            border-radius: 25px; /* ここの角丸が本体っぽさ */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .controls { margin-top: 20px; }
+        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        button:hover { background: #0056b3; }
     </style>
 </head>
 <body>
 
     <h1>iNSPiC カバーメーカー</h1>
-    <p class="disclaimer">※非公式ファンツール：120mm × 84mm 目安</p>
+    <p class="disclaimer">※非公式ツール：実寸目安 120mm × 84mm</p>
     
-    <canvas id="canvas"></canvas>
+    <div class="canvas-wrapper">
+        <canvas id="canvas"></canvas>
+    </div>
 
     <div class="controls">
-        <input type="file" id="imageInput" accept="image/*"><br><br>
-        <button id="download">画像を保存する</button>
+        <input type="file" id="imageInput" accept="image/*" style="margin-bottom: 10px;"><br>
+        <button id="download">デザインを保存 (PNG)</button>
     </div>
 
     <script>
-        // iNSPiCのサイズをピクセル換算 (約453x317px)
+        // 実寸比率を維持したサイズ設定 (453x317)
         const canvas = new fabric.Canvas('canvas', {
             width: 453,
             height: 317,
-            backgroundColor: '#fff'
+            backgroundColor: '#ffffff'
         });
 
-        // 赤いガイド枠を描画
-        const rect = new fabric.Rect({
-            left: 0, top: 0, width: 451, height: 315,
+        // iNSPiC特有の「角丸」ガイドを作成
+        const inspicShell = new fabric.Rect({
+            left: 0,
+            top: 0,
+            width: 453,
+            height: 317,
+            rx: 20, // 角の丸み（横）
+            ry: 20, // 角の丸み（縦）
+            fill: 'transparent',
+            stroke: '#e0e0e0',
+            strokeWidth: 2,
+            selectable: false,
+            evented: false
+        });
+
+        // 裁断時の目安となる点線
+        const cutLine = new fabric.Rect({
+            left: 5, top: 5, width: 443, height: 307,
+            rx: 18, ry: 18,
             fill: 'transparent', stroke: '#ff4757', strokeDashArray: [5, 5],
             selectable: false, evented: false
         });
-        canvas.add(rect);
 
-        // 画像のアップロード
+        canvas.add(inspicShell);
+        canvas.add(cutLine);
+
         document.getElementById('imageInput').onchange = function(e) {
             const reader = new FileReader();
             reader.onload = function(f) {
                 fabric.Image.fromURL(f.target.result, function(img) {
-                    img.scaleToWidth(200); // 最初は少し小さめに配置
+                    // 画像を枠内に収める
+                    img.scaleToWidth(300);
+                    // 画像をガイドより背面へ
                     canvas.add(img);
+                    img.moveTo(0); 
                     canvas.setActiveObject(img);
                     canvas.renderAll();
                 });
@@ -55,20 +85,11 @@
             reader.readAsDataURL(e.target.files[0]);
         };
 
-        // 画像として保存
         document.getElementById('download').onclick = function() {
-            // ガイド枠を一時的に消して保存
-            rect.set('visible', false);
+            // 保存時はガイドを消す
+            inspicShell.set('visible', false);
+            cutLine.set('visible', false);
             canvas.renderAll();
+            
             const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
             const link = document.createElement('a');
-            link.download = 'inspic-design.png';
-            link.href = dataURL;
-            link.click();
-            // ガイド枠を戻す
-            rect.set('visible', true);
-            canvas.renderAll();
-        };
-    </script>
-</body>
-</html>
